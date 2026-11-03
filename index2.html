@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Müco'nun Bir Günü</title>
+<style>
+*{box-sizing:border-box;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#14121f;font-family:"Trebuchet MS",system-ui,sans-serif;color:#fff}
+canvas{display:block;position:fixed;inset:0}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 0;font-weight:900;font-size:20px;pointer-events:none;text-shadow:0 2px 0 #000,0 0 8px #000}
+#msg{position:fixed;left:10px;right:10px;bottom:calc(84px + env(safe-area-inset-bottom,0px));background:#fffbe3;color:#111;border:3px solid #000;border-radius:16px;padding:10px 13px;font-weight:700;font-size:15px;line-height:1.35;box-shadow:0 5px 0 #000;display:none;max-height:42vh;overflow:auto}
+#btns{position:fixed;left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;flex-wrap:wrap}
+button{flex:1 1 100%;padding:13px 10px;font:900 15px "Trebuchet MS",system-ui,sans-serif;background:#ffc400;border:3px solid #000;border-radius:14px;box-shadow:0 4px 0 #000;color:#000}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #000}
+.h{flex:1 1 40%;font-size:26px}
+#sc small{font-size:13px;display:block;text-align:right}
+#g{position:fixed;inset:0;z-index:5;background:#14121fee;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center}
+#g h3{margin:0;font-size:22px}#g p{margin:0}#g button{max-width:340px}
+.gr{display:grid;grid-template-columns:repeat(5,46px);gap:5px}.gr i{width:46px;height:46px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:900 22px sans-serif;font-style:normal}
+.c2{background:#2e7d32}.c1{background:#c9a400}.c0{background:#555}
+.kb{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:360px}
+#g b{background:#ffc400;color:#000;border:2px solid #000;border-radius:8px;padding:9px 10px;font-weight:900;min-width:30px;display:inline-block}
+#g b.ok{background:#2e7d32;color:#fff}#g b.sel{background:#fff}
+.cl{display:flex;gap:10px}.cl div{display:flex;flex-direction:column;gap:6px;width:150px}
+.sc{display:flex;gap:16px;align-items:center}.sc span{display:flex;flex-direction:column;gap:6px;align-items:center}.sc big{font-size:34px}
+#g canvas{background:#1f8a3c;border:3px solid #000;border-radius:14px;max-width:100%}
+#vg{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,#0008 100%)}
+@keyframes fl{0%{transform:rotateX(90deg);opacity:.2}100%{transform:none;opacity:1}}
+#g b.c0{background:#555;color:#fff}#g b.c1{background:#c9a400}#g b.c2{background:#2e7d32;color:#fff}
+</style></head><body>
+<div id="vg"></div><div id="hud"><span id="t">15:00</span><span id="o"></span><span id="sc">😂 0</span></div>
+<div id="g"></div><div id="msg"></div><div id="btns"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(R.domElement);
+const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(55,1,.1,100);
+function rs(){R.setSize(innerWidth,innerHeight);C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix()}
+addEventListener('resize',rs);rs();
+S.add(new THREE.HemisphereLight(0xfff4e0,0x554466,.85));const PL=new THREE.PointLight(0xffd9a0,.7,22);PL.position.set(0,4,3);S.add(PL);
+const DL=new THREE.DirectionalLight(0xffffff,.7);DL.position.set(4,8,6);DL.castShadow=true;DL.shadow.mapSize.set(2048,2048);Object.assign(DL.shadow.camera,{left:-9,right:9,top:9,bottom:-9,far:40});DL.shadow.camera.updateProjectionMatrix();S.add(DL);
+let lie=0,gp=0,ho=null,debt=0,day=1,ds=0,W,upd=()=>{},score=0,clock=900,T=0,tasks=[],tapFn=null,tmo=[];
+const Cy=(r,h)=>new THREE.CylinderGeometry(r,r*.9,h,10),Bx=(w,h,d)=>new THREE.BoxGeometry(w,h,d),Sp=r=>new THREE.SphereGeometry(r,18,14);
+const mat=(c,o)=>new THREE.MeshStandardMaterial(Object.assign(c&&c.isTexture?{map:c,roughness:.65}:{color:c,roughness:.75},o));
+function tex(rx,ry,fn){const c=document.createElement('canvas');c.width=c.height=256;fn(c.getContext('2d'));const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);t.anisotropy=4;return t}
+const rn=Math.random,tl=x=>{x.fillStyle='#5b6372';x.fillRect(0,0,256,256);x.strokeStyle='#2d3340';x.lineWidth=3;for(let i=0;i<=256;i+=64){x.beginPath();x.moveTo(i,0);x.lineTo(i,256);x.moveTo(0,i);x.lineTo(256,i);x.stroke()}for(let i=0;i<300;i++){x.fillStyle='#fff1';x.fillRect(rn()*256,rn()*256,3,3)}};
+const TX={wood:tex(3,2,x=>{for(let i=0;i<8;i++){x.fillStyle='hsl(24,42%,'+(34+rn()*10)+'%)';x.fillRect(0,i*32,256,32);x.fillStyle='#0004';x.fillRect(0,i*32,256,2);for(let j=0;j<25;j++){x.fillStyle='#0002';x.fillRect(rn()*256,i*32+rn()*30,50,1)}}}),
+ grass:tex(5,5,x=>{for(let i=0;i<8;i++){x.fillStyle=i%2?'#1c7f36':'#25994a';x.fillRect(0,i*32,256,32)}for(let i=0;i<900;i++){x.fillStyle=rn()<.5?'#0a4a1a33':'#6fd08033';x.fillRect(rn()*256,rn()*256,2,3)}}),
+ tile:tex(3,40,tl),wall:tex(1,30,tl),
+ marble:tex(3,2,x=>{x.fillStyle='#d9d4cc';x.fillRect(0,0,256,256);x.strokeStyle='#8886';for(let i=0;i<14;i++){x.beginPath();x.moveTo(rn()*256,0);x.bezierCurveTo(rn()*256,80,rn()*256,160,rn()*256,256);x.stroke()}x.strokeStyle='#aaa';x.strokeRect(0,0,256,256)})};
+function mesh(g,c,x=0,y=0,z=0,p){const m=new THREE.Mesh(g,mat(c));m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;(p||W).add(m);return m}
+function reset(bg){S.remove(W);W=new THREE.Group();S.add(W);S.background=new THREE.Color(bg);S.fog=new THREE.Fog(bg,14,40);$('#o').textContent='Gün '+day;$('#o').style.color='#fff';tasks=[];tapFn=null;tmo.forEach(clearTimeout);tmo=[]}
+function cam(x,y,z,lx,ly,lz){const k=Math.min(1.8,Math.max(1,1.1/C.aspect));C.position.set(lx+(x-lx)*k,ly+(y-ly)*k,lz+(z-lz)*k);C.lookAt(lx,ly,lz)}
+function say(t){const m=$('#msg');m.style.display=t?'block':'none';m.innerHTML=t||'';pos()}
+function pos(){const m=$('#msg'),h=$('#btns').offsetHeight;m.style.bottom='calc('+(h+22)+'px + env(safe-area-inset-bottom,0px))';m.style.maxHeight=Math.max(110,innerHeight-h-100)+'px'}
+function btns(a,cls){const b=$('#btns');b.innerHTML='';a.forEach(([l,f])=>{const e=document.createElement('button');e.textContent=l;if(cls)e.className=cls;e.onclick=f;b.append(e)});pos()}
+const later=(f,ms)=>tmo.push(setTimeout(f,ms));
+const pad=n=>String(n).padStart(2,'0');
+function lbl(t,bg,fg,w,h,x,y,z){const c=document.createElement('canvas');c.width=256;c.height=Math.round(256*h/w);const k=c.getContext('2d');k.fillStyle=bg;k.fillRect(0,0,256,c.height);k.fillStyle=fg;k.font='bold '+Math.min(64,340/t.length)+'px sans-serif';k.textAlign='center';k.textBaseline='middle';k.fillText(t,128,c.height/2);const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)}));m.position.set(x,y,z);W.add(m);return m}
+// ---- karakter ----
+function person(o){const g=new THREE.Group();
+ mesh(Bx(.5,.6,.3),o.shirt,0,1,0,g);
+ const l=mesh(Cy(.11,.6),o.pants,-.13,.4,0,g),r=mesh(Cy(.11,.6),o.pants,.13,.4,0,g);
+ mesh(Bx(.22,.12,.3),0xffffff,-.13,.06,.04,g);mesh(Bx(.22,.12,.3),0xffffff,.13,.06,.04,g);
+ const al=mesh(Cy(.075,.5),o.shirt,-.34,1,0,g),ar=mesh(Cy(.075,.5),o.shirt,.34,1,0,g);mesh(Sp(.08),o.skin,0,-.28,0,al);mesh(Sp(.08),o.skin,0,-.28,0,ar);
+ mesh(Sp(.28),o.skin,0,1.65,0,g).scale.set(1,1.1,1);
+ mesh(Sp(.29),o.hair,0,1.76,-.06,g).scale.set(1,o.bald?.32:.75,1);
+ mesh(Sp(.045),0x111111,-.1,1.68,.265,g);mesh(Sp(.045),0x111111,.1,1.68,.265,g);
+ const ns=mesh(Sp(o.nose?.085:.05),o.skin,o.nose?.03:0,1.61,.3,g);if(o.nose){ns.scale.set(.8,1.4,1.2);ns.rotation.z=.45}mesh(Cy(.08,.15),o.skin,0,1.4,0,g);[-1,1].forEach(q=>mesh(Sp(.05),o.skin,q*.28,1.65,0,g));mesh(Bx(.1,.025,.02),0x7a2e2e,0,1.53,.27,g);[-.1,.1].forEach(x=>mesh(Bx(.09,.025,.02),o.hair,x,1.76,.26,g));
+ if(o.gl)[-.1,.1].forEach(x=>{const t=new THREE.Mesh(new THREE.TorusGeometry(.07,.015,8,14),mat(0x111111));t.position.set(x,1.68,.27);g.add(t)});if(o.beard)mesh(Sp(.22),o.hair,0,1.5,.08,g).scale.set(1,.8,.9);
+ if(o.earr)[-1,1].forEach(s=>{const t=new THREE.Mesh(new THREE.TorusGeometry(.075,.018,8,16),mat(0xffd700,{metalness:.9,roughness:.2}));t.position.set(s*.29,1.58,0);t.rotation.y=Math.PI/2;g.add(t)});
+ g.userData={l,r,al,ar};W.add(g);return g}
+const MUC={skin:0xe0b088,hair:0x1a1208,shirt:0x111111,pants:0x8a8f99,earr:1,nose:1};
+const OGZ={skin:0xf2cfa8,hair:0xc8501c,shirt:0x7b1e3a,pants:0x2a7fd4,beard:1,bald:1};
+function walk(p,t){const u=p.userData,s=Math.sin(t*10)*.6;u.l.rotation.x=s;u.r.rotation.x=-s;u.al.rotation.x=-s;u.ar.rotation.x=s}
+function go(p,x,z,s,done){tasks.push({p,x,z,s,done})}
+function runTasks(dt){for(let i=tasks.length-1;i>=0;i--){const k=tasks[i],p=k.p,dx=k.x-p.position.x,dz=k.z-p.position.z,d=Math.hypot(dx,dz);
+ if(d<.1){tasks.splice(i,1);walk(p,0);k.done&&k.done()}else{p.position.x+=dx/d*k.s*dt;p.position.z+=dz/d*k.s*dt;p.rotation.y=Math.atan2(dx,dz);walk(p,T)}}}
+const DAYS=['Normal bir gün. Zara gecesi başlıyor.','YENİ: Penaltıda rüzgar var, kaleci daha akıllı.','YENİ: Metro kalabalık ve hızlı akıyor.','YENİ: Mağazada yanlış bölümü katlamak ceza!','YENİ: Müdür teftişi, yoğun vardiya!'];
+const QS=[
+["Aga hamsiyi Trabzon'dan getirttim, hamsi nasıl yenir biliyor musun?",[["Kafasıyla yerim, hamsi benden korkmaz.","Hamsi korkmaz da burnunu görünce tavaya kendi atlar!",90],["Ekmek arasına koyup menü yaparım.","Hamsiyi burgere koyan Karadeniz'e küsmüş olur 😂",100],["Hamsi yenmez aga, hamsiyle konuşulur.","Hamsiyle konuşan Müco, balığa bile yalan söylüyor!",80]]],
+["Aga saçım dökülüyor mu? Dürüst söyle.",[["Yok aga, alnın biraz fazla uzadı o kadar.","Alın değil, saçlarımın tatil köyü bu! Senin burnun ayrı posta kodu!",100],["Kafan güneş paneli gibi, bedava elektrik üretiyorsun.","Panelin yanında senin burnun gölge yapıyor aga 😂",110],["Saçların seni terk etti ama ben terk etmem.","Terk eden saç değil, senin burnunun gölgesinden kaçtı!",90]]],
+["Aga kuponum 5 maçta 4 tuttu, beşincisi yattı! Neden?",[["Trabzon oynadı aga, kupon bile üzüldü.","Beşiktaş'a oynasam kupon kendi yatardı zaten 😂",90],["Kaleci hamsi yemiş, uyuyakalmış.","Hamsi uyku getirmez, yalan getirir sana!",100],["Kupon yatmadı aga, seni kıskandı.","Kuponu kıskandıran Müco'nun burnu olsa gerek 😂",80]]],
+["Aga selfie çekelim. Sığar mısın?",[["Sığarım ama burnum için ayrı kare lazım.","Burnuna ayrı il açarız: Yamuk Burun şehri 😂",110],["Panoramik çekelim, burnum sağ köşede görünsün.","Kamera \"bu burun benim kapsamım dışında\" der aga!",100],["Filtreyi \"burun küçült\"e alırız.","Filtre bile \"ben bu işe giremem\" diyor aga!",90]]],
+["Aga Trabzon'da hamsi festivali var, gelir misin?",[["Gelirim ama hamsi burnumu görürse kaçar.","Hamsi kaçmaz, ağzın kaçıyor senin Müco!",90],["Giderim, kupon yatıracak para da çıkar belki.","Önce kuponu, sonra kendini yatıracaksın aga 😂",100],["Gelmem, Trabzon'da kel çok, ışık yansıyor gözüm alıyor.","Gözünü alan ışık değil, burnun gölgesi!",110]]],
+["Aga kuponum yattı, saçım da yattı. Hangisi önce geri gelir?",[["Kupon gelir aga, saçın biraz zor.","Saç da kupon da gelir, senin burnun küçülür mü onu söyle!",100],["İkisi de gelmez, Trabzon'dan hamsi gelir ancak.","Hamsiyi ver de bir yürek geri gelsin Müco!",80],["Saçların hamsiyle takas yapmış, kupon da balıkla.","Takas bile senin yalanına yetmez aga 😂",110]]]];
+QS.push(
+['Müco hesaba baktı: bakiye <b>-47 TL</b>. Oğuzhan\'a dönüp borç istiyor, ne diyecek?',[['Aga 500 TL ver, Pluxe kartım gelince iki katını veririm.','Pluxe kart yalanın ikinci cildi aga, yok!',60,500],['Aga 200 TL, Beşiktaş şampiyon olunca faiziyle veririm.','Şampiyonluk faizli çıkmaz aga, git işe!',50,200],['Aga 100 TL yeter, kaybolursam Müge Anlı beni bulsun.','Kaybolursan bulunmazsın, 100 TL de yok 😂',90,100]],'Oğuzhan'],
+['Müco paketi salladı: <b>sigara bitmiş</b>! Son dalı dün yakmıştı. Oğuzhan\'a dönüyor.',[['Aga bir dal sigara ver, köşeye kadar gideceğim.','Ben bıraktım aga! Git simit al!',60],['Aga paket mi yok, bir tane bile mi yok?','Yok aga yok, kutu da boş, hayat da boş 😂',70],['Aga bir nefes çektir, sonra sana bir yalan anlatayım.','Yalanını dinlerim ama sigara yok, bu kural!',90]],'Oğuzhan'],
+['Müco birden sevgilisini aradı: <b>"Alo bebeğim..."</b>',[['Bebeğim ben şu an Beşiktaş\'ta toplantıdayım, CEO ile görüşüyorum.','Sesin koltuktan geliyor Müco, Müge Anlı bile duyuluyor!',80],['Bebeğim sana sürpriz yapacaktım, lüks restoran ayarlıyorum.','Para yok diyordun, sürpriz de yalan çıkar Müco!',70],['Bebeğim Zara\'da vardiyadayım, müdür yanımda, sessiz ol.','Saat 16:00 Müco, sen daha uyanmamışsın!',90]],'Sevgilisi'],
+['Müco kuponu hazırladı: 5 maç, <b>oran 187</b>, yatırılan 200 TL. <b>Mehmet</b> telefona baktı.',[['Beşiktaş 3-0! 94\'te de gol atar, bana güven.','Müco, istatistik diyor ki 7 oyuncu sakat. 93\'te penaltıyı kaçırdılar, kupon yattı.',50,200],['İlk yarı 2-0, ikinci yarı 2-0 çifte.','Sonuç 0-0 bitti Müco, sana istatistik değil dua lazım.',70,200],['Kuponu rakibe yatırdım, ters psikoloji.','Rakip kazandı, kupon yine yattı. Sen şansı aşağıladın!',90,200]],'Mehmet'],
+['<b>Mehmet</b> laptop açtı: "Müco, telefonun %2 şarjda, 14 bin foto var, bulut yok. Nasıl yaşıyorsun?"',[['{M} ben bulutu hava durumundan biliyorum.','Bulut sunucudur Müco, yağmur değil. Seni bilgisayardan uzak tutmak lazım 😂',90],['Telefonum düştü, ekran şarj ediyor.','Ekran şarj etmez Müco, sen kabloyu ısırmışsın!',80],['Şifrem Beşiktaş1903.','Bu şifreyle hesap bütün mahalleye ait!',100]],'Mehmet'],
+['<b>Mehmet:</b> "Müco, gece Zara\'da katlayıp sabah borçlanıyorsun, ekonomik model bu mu?"',[['{M} 300 TL ver, ay sonu şampiyonlar ligi gibi geri gelir.','Ay sonun yok Müco, gelir kalemin sıfır!',60,300],['Bir kuponla hepsini çıkarırım, bu sefer içime doğdu.','İçine doğan kupon yattı, dışına doğan borç çıktı 😂',70,150],['Zara indirimini borca say.','İndirimden önce zam gelir, ekonomi bilmezsin Müco!',90]],'Mehmet']);
+QS.push(
+["📹 <b>Hasan</b> görüntülü aradı: <i>\"Müco, Zara'dan parfüm alacağım, indirim var mı?\"</i>",[["Hasan abi parfümler bugün ters kokuyor, koklayan ayakkabıya dönüşüyor.","Ayakkabı olmak istiyorum Müco, kaç numara?",100],["Parfümler hamsi yağından yapılıyor, hepsi balık koktu.","Hamsi kokan parfüm mü? Ben Karadenizliyim, bana lazım!",110],["Depo yandı ama itfaiye parfüm sıkıp söndürdü.","Parfümle yangın mı söner Müco? Kafayı yemişsin!",120]],"Hasan"],
+["📹 <b>Hasan:</b> <i>\"Müco, 3 parfüm istiyorum. Şimdi gelsem verir misin?\"</i>",[["Gelme, mağazayı bugün hayaletler kiraladı.","Hayalet mi? Ben hayaletlerle de pazarlık ederim!",100],["Parfümleri Mars'a gönderdik, 3 gün sürer.","Mars'ta Zara mı varmış, bilet kaç lira Müco?",120],["Müge Anlı bütün parfümleri bulup götürdü.","Müge Anlı parfüm mü arıyor, ben seni arıyorum Müco!",90]],"Hasan"],
+["📹 <b>Hasan:</b> <i>\"Müco, çalışan indirimiyle yarı fiyata alırım di mi?\"</i>",[["İndirim sadece sağ ayakla girenlere.","Ben solakım ama ayağımı değiştiririm Müco!",90],["Şişeyi açınca alarm çalıyor, polis geliyor.","Polis parfüm koklamaya geliyorsa ben de gelirim!",100],["İndirim ay yıldızlı çalışanlara, sen bulutlu çıktın.","Bulutlu mu? Hava durumundan haber alırım ben!",110]],"Hasan"]);
+QS.push(
+["🗣️ <b>Müco</b> Oğuzhan'a soru soruyor:",[["Aga Trabzon bu sene kaçıncı olur?","Birinci! Sen ise kupon sıralamasında sonuncusun 😂",90],["Aga kel kafana güneş çarpsa gölge nereye düşer?","Gölge senin burnuna düşer, yamuk olduğu için geri sekiyor!",110],["Aga hamsi mi çok konuşur, sen mi?","Hamsi konuşmaz ama senin yalanına ağlar!",100]],"Oğuzhan"],
+["🍽️ <b>Müco</b> acıkmış, Oğuzhan'a bir şey ısmarlatacak...",[["Aga İskender'i sen ısmarla, ben sonra veririm.","Müco'nun sonrası 2031'de! Cüzdan kapalı 😂",70],["Aga bugün sende, kaybeden öder dimi?","Kaybeden sensin, ben hâlâ kazanıyorum!",80],["Aga kartı evde unuttum, çay bile yok.","Çay bahçesinde de unuturdun, ben seni bilirim!",90]],"Oğuzhan"],
+["🍽️ <b>Müco</b> Oğuzhan'a \"Hamsi tava söyleyelim\" diyor...",[["Aga yarısını sen öde, yarısını balık ödesin.","Balığın cebi yok Müco, senin de vicdanın!",80],["Aga ben Beşiktaşlı sen Trabzonlu, komşuluk hakkı!","Komşuluk hakkı kupon yatırınca bitti aga!",90],["Aga bu ay maaşım yok, Zara beni kovmuş sayılıyor.","Kovulmadın ama kupon yüzünden kovulacaksın!",100]],"Oğuzhan"],
+["🗣️ <b>Müco</b> Mehmet'e soru soruyor:",[["{M} bilgisayarla Trabzon maçını önceden bulur musun?","Bilgisayar maçı bilmez Müco ama kuponun yattığını %100 bilir!",90],["{M} bulutta fotoğraflarım uçar mı?","Bulut hava durumu değil Müco, uçan sensin!",100],["{M} burnum yamuk mu, kamera mı yamuk?","İkisi de yamuk Müco ama sen daha yamuksun 😂",110]],"Mehmet"],
+["🍽️ <b>Müco</b> Mehmet'e bir şey ısmarlatacak...",[["{M} bir kahve ısmarla, bulutu açınca yazarım.","Kahveyi ısmarlarım ama sen bulutu da içersin Müco!",70],["{M} sen laptoplusun ben açım, denge lazım.","Denge olsa sen de ödersin Müco!",80],["{M} kartım bulutta kaldı, indirince veririm.","Bulutta kalan kartı ben ödemem!",90]],"Mehmet"],
+["🍽️ <b>Müco</b> Mehmet'e \"Öğle yemeği sende\" diyor...",[["{M} yarın ben ısmarlarım, söz.","Yarın dediğin gün takvimde yok Müco!",60],["{M} fatura gelirse ben ödemiş sayılırım.","Sayılmak ödemek değil Müco, mantık!",80],["{M} laptopun yanına mantı çok yakışır.","Laptop mantıyla çalışmaz, cebin de boş!",90]],"Mehmet"]);
+const MM=()=>["mehmet abim","mehmetçim","lan mehmet"][Math.random()*3|0];
+const DAYEV=[[9,18],[10,19],[9,20],[11,18],[10,19]],DAYOG=[[0,1,15],[2,3,16],[4,5,15],[6,7,17],[1,4,16]];
+function dlg(K,done){let n=0;(function q(){if(n>=K.length){done();return}
+ const Q=QS[K[n]],w=Q[2]||'Oğuzhan',mm=MM(),f=t=>t.replace(/\{M\}/g,mm);say(Q[2]?f(Q[0]):'<b>Oğuzhan:</b> "'+Q[0]+'"');
+ btns(Q[1].map(a=>[f(a[0]),()=>{const l=Math.ceil(a[2]/20);score+=a[2];lie+=l;debt+=a[3]||0;say('<b>Müco:</b> "'+f(a[0])+'"<br><b>'+w+':</b> "'+f(a[1])+'"<br>+'+a[2]+' • 🤥 +'+l+(a[3]?' • 💸 -'+a[3]+' TL':''));btns([['Devam ⏩',()=>{n++;q()}]])}]))})()}
+// ---- bölüm 1: salon ----
+function p1(){reset(0x2b2440);clock=900;ds=score;ho=null;
+ mesh(Bx(10,.2,8),TX.wood,0,-.1,0);mesh(Bx(10,4,.2),0xf2d8a7,0,2,-3);mesh(Bx(.2,4,8),0xe8c98f,-5,2,0);
+ mesh(Bx(4,.02,3),0xb23a48,0,.01,0);
+ mesh(Bx(3.2,.5,1.1),0x3b6ea5,0,.25,1.6);mesh(Bx(3.2,.9,.25),0x2f5a8a,0,.75,2.1);
+ mesh(Bx(.25,.7,1.1),0x2f5a8a,-1.7,.45,1.6);mesh(Bx(.25,.7,1.1),0x2f5a8a,1.7,.45,1.6);
+ mesh(Bx(2.7,1.7,.1),0x111111,0,2,-2.85);lbl('MÜGE ANLI','#c2185b','#fff',2.4,1.4,0,2,-2.79);
+ mesh(Bx(1.4,.08,.8),0x6b4423,0,.5,-.3);[-.6,.6].forEach(x=>mesh(Bx(.08,.5,.08),0x6b4423,x,.25,-.3));
+ mesh(Bx(.05,1.6,2.2),0x87ceeb,-4.88,2.3,-1);mesh(Cy(.3,.5),0x8d5524,-3.8,.25,-2.3);mesh(Sp(.55),0x2e7d32,-3.8,.95,-2.3);mesh(Cy(.05,1.6),0x333333,3.8,.8,.5);mesh(Cy(.3,.3),0xffe08a,3.8,1.7,.5);
+ lbl('BJK 1903','#111','#fff',1.6,1,-3,2.5,-2.88);lbl('TS','#7b1e3a','#6fb7ff',1.4,.9,3.2,2.5,-2.88);
+ const pv=new THREE.Group();W.add(pv);const m=person(MUC);pv.add(m);m.position.set(0,0,0);m.rotation.y=Math.PI;
+ pv.rotation.z=-Math.PI/2;pv.position.set(-1.1,.8,1.5);
+ cam(5,3.2,6.5,-.3,1.1,0);
+ say('<b>GÜN '+day+'</b> — '+DAYS[day-1]+'<br>15:00. Müge Anlı başlamış, karnın aç!');
+ btns([['🍔 McDonald\'s menü sipariş et',order]]);
+ upd=(dt,t)=>{pv.position.y=.8+Math.sin(t*2)*.02;if(ho){ho.vy-=22*dt;const m=ho.m;m.position.y+=ho.vy*dt;if(m.position.y<=0){m.position.y=0;if(ho.vy<-4)ho.vy*=-.35;else{const f=ho.f;ho=null;f()}}}};
+ function order(){clock=920;say('Müco: "Menü 2400 TL mi?! Neyse, sipariş verdim." Kurye yolda...');btns([]);
+  const k=person({skin:0xd9a577,hair:0x222222,shirt:0xe53935,pants:0x333333});k.position.set(-6,0,.6);
+  const bag=mesh(Bx(.5,.5,.35),0xffc400,.35,.9,.25,k);
+  go(k,-2.4,.6,3,()=>{clock=945;say('Kurye: "Müco Bey, McDonald\'s siparişiniz!"');btns([['📦 Teslim al',take]])});
+  function take(){mesh(Bx(.5,.35,.35),0xffc400,0,.67,-.3);k.remove(bag);say('Müco sipariş kutusunu masaya koydu. Kurye gitti. Birden kapıdan biri bağırdı: <b>"HOOP!"</b>');btns([]);
+   go(k,-6,.6,3,()=>W.remove(k));
+   const o=person(OGZ);o.position.set(1.8,7,.3);const hl=lbl('HOOP!','#ffc400','#000',1.8,.7,1.8,3.6,.3);ho={m:o,vy:0,f:()=>{W.remove(hl);clock=970;ask(o)}}}}
+ function ask(o){dlg(DAYOG[day-1],()=>{clock=1010;say('<b>Oğuzhan:</b> "Hoop! Aga bugünün oyunu: <b>'+GN[day-1]+'</b>. Puan topla, İskender yiyelim!"');btns([['▶️ Oyna',()=>GAMES[day-1](inter)]])})}
+ function after(){clock=1100;say('Saat 23:00\'a doğru maç özetleri başlıyor!');btns([['📺 Maç özetlerini aç',p2]])}
+ function txt(){say('📱 Müco telefonu açtı: <b>günün metin macerası!</b>');btns([['▶️ Oyna',()=>gText(TS[(day-1)%3],after)]])}
+ function hasan(){say('📞 <b>Hasan görüntülü arıyor...</b> 📹😎');btns([['📹 Aç',()=>dlg([12+Math.floor(Math.random()*3)],txt)]])}
+ function inter(){clock=1050;say('Kapı yine çalındı: <b>Mehmet</b> geldi, laptop kolunun altında.');btns([]);
+  const M=person({skin:0xe8c4a0,hair:0x222222,shirt:0x37474f,pants:0x263238,gl:1});M.position.set(-6,0,.1);
+  go(M,-2.4,.4,2.6,()=>{M.rotation.y=.6;clock=1080;dlg(DAYEV[day-1],()=>{day%2==0||Math.random()<.5?hasan():txt()})})}
+}
+// ---- ara oyunlar ----
+const ISK=250,GN=['Kelime bulma (Wordle)','Futbolcu-takım eşleştirme','Maç skor tahmini','Kupon bahis','Top sektirme'];var GK;
+function G(h){const g=$('#g');g.innerHTML=h;g.style.display=h?'flex':'none'}
+function endG(n,m,next){onkeydown=null;gp=Math.max(0,gp+n);G('');say(m+'<br>🎮 '+(n>=0?'+':'')+n);iskMenu(next)}
+function iskMenu(next){btns([['🍖 İskender söyle ('+ISK+' 🎮)',()=>{if(gp<ISK){say('Oğuzhan: "Yetmez aga, '+(ISK-gp)+' puan daha lazım!" 😂');return}gp-=ISK;score+=150;lie+=2;say('🍖 <b>İskender geldi!</b> Müco: "Ben ısmarladım diyelim."<br>Oğuzhan: "Hamsi de koysalar tam olurdu!" +150');btns([['Devam ⏩',next]])}],['Devam ⏩',next]])}
+const WD=[['INTER','İtalya, siyah-mavi'],['PORTO','Portekiz takımı'],['MILAN','İtalya, kırmızı-siyah'],['BASEL','İsviçre takımı'],['ADANA','Anadolu şehri takımı'],['HAKEM','Maçı yöneten'],['KUPON','Müco\'nun en büyük düşmanı'],['HAMSİ','Karadeniz balığı'],['GOLCÜ','Ağları sarsar'],['FORMA','Taraftar giyer'],['DERBİ','Büyük rekabet']];
+function ev(w,wd){const r=[...w].map(()=>'c0'),u=[...wd];[...w].forEach((c,i)=>{if(c==wd[i]){r[i]='c2';u[i]=null}});[...w].forEach((c,i)=>{if(r[i]!='c2'){const j=u.indexOf(c);if(j>=0){r[i]='c1';u[j]=null}}});return r}
+function gWord(next){const[wd,hint]=WD[Math.random()*WD.length|0];let rows=[],cur='',ks={};const P={c0:1,c1:2,c2:3};
+ function d(){let h='<h3>🔤 Futbol Wordle</h3><p>5 harf, 5 hak. İpucu: '+hint+'</p><div class=gr>';
+  for(let r=0;r<5;r++){const t=rows[r]||(r==rows.length?cur:''),e=rows[r]?ev(t,wd):[];for(let c=0;c<5;c++)h+='<i class="'+(e[c]||'')+'"'+(rows[r]&&r==rows.length-1?' style="animation:fl .5s '+c*.12+'s both"':'')+'>'+(t[c]||'')+'</i>'}
+  h+='</div>';['QWERTYUIOPĞÜ','ASDFGHJKLŞİ','ZXCVBNMÖÇ'].forEach((row,i)=>{h+='<div class=kb>'+(i==2?'<b onclick="GK(2)">OK</b>':'');[...row].forEach(l=>h+='<b class="'+(ks[l]||'')+'" onclick="GK(\''+l+'\')">'+l+'</b>');h+=(i==2?'<b onclick="GK(1)">⌫</b>':'')+'</div>'});G(h)}
+ onkeydown=e=>{const k=e.key;if(k=='Enter')GK(2);else if(k=='Backspace')GK(1);else{const l=k=='i'?(wd.includes('İ')?'İ':'I'):k.toLocaleUpperCase('tr');if(l.length==1&&'QWERTYUIOPĞÜASDFGHJKLŞİZXCVBNMÖÇ'.includes(l))GK(l)}};
+ GK=k=>{if(k==1)cur=cur.slice(0,-1);else if(k==2){if(cur.length<5)return;const w=cur;rows.push(w);cur='';ev(w,wd).forEach((q,i)=>{if(!ks[w[i]]||P[q]>P[ks[w[i]]])ks[w[i]]=q});
+  if(w==wd){endG(200-(rows.length-1)*35,'✅ <b>'+wd+'</b> bulundu!<br>Oğuzhan: "Bu kadar futbol bilen adam işe gitmez aga!"',next);return}
+  if(rows.length==5){endG(0,'❌ Cevap: <b>'+wd+'</b>.<br>Oğuzhan: "Sen takım değil kupon biliyorsun aga 😂"',next);return}}else if(cur.length<5)cur+=k;d()};d()}
+const FP=[['Hagi','Galatasaray'],['Alex','Fenerbahçe'],['Maradona','Napoli'],['Pelé','Santos'],['Quaresma','Beşiktaş'],['Totti','Roma'],['Del Piero','Juventus'],['Cantona','Man. United']];
+function gMatch(next){const P=FP.slice().sort(()=>Math.random()-.5).slice(0,4),T=P.map(p=>p[1]).sort(()=>Math.random()-.5);let s=-1,ok=[],pts=0;
+ function d(){let h='<h3>⚽ Eşleştir</h3><p>Futbolcuyu seç, ikonik takımına dokun.</p><div class=cl><div>';
+  P.forEach((p,i)=>h+='<b class="'+(ok.includes(i)?'ok':i==s?'sel':'')+'" onclick="GK(0,'+i+')">'+p[0]+'</b>');h+='</div><div>';
+  T.forEach((t,j)=>h+='<b class="'+(ok.some(i=>P[i][1]==t)?'ok':'')+'" onclick="GK(1,'+j+')">'+t+'</b>');G(h+'</div></div>')}
+ GK=(k,i)=>{if(!k){if(!ok.includes(i))s=i}else if(s>=0){if(P[s][1]==T[i]){ok.push(s);pts+=50}else pts-=10;s=-1;
+  if(ok.length==4){endG(Math.max(0,pts),'✅ Hepsini eşleştirdin!<br>Oğuzhan: "Futbolcuyu bildin, kuponu hâlâ bilemiyorsun!"',next);return}}d()};d()}
+function gScore(next){let a=1,b=1;const R=[0,1,1,2,2,3,4],A=R[Math.random()*7|0],B=R[Math.random()*7|0];
+ function d(){G('<h3>🎯 Skor tahmini</h3><p>Beşiktaş - Trabzonspor</p><div class=sc><span><b onclick="GK(0,1)">+</b><big>'+a+'</big><b onclick="GK(0,-1)">−</b></span><big>-</big><span><b onclick="GK(1,1)">+</b><big>'+b+'</big><b onclick="GK(1,-1)">−</b></span></div><button onclick="GK(9)">Tahmin et</button>')}
+ GK=(k,v)=>{if(k==0)a=Math.max(0,Math.min(6,a+v));else if(k==1)b=Math.max(0,Math.min(6,b+v));else{const m='Maç: Beşiktaş <b>'+A+' - '+B+'</b> Trabzonspor<br>';
+  if(a==A&&b==B)endG(200,m+'🎯 Tam isabet!<br>Oğuzhan: "Falcı mısın Müco?"',next);else if(Math.sign(a-b)==Math.sign(A-B))endG(80,m+'👍 Maç sonucunu bildin.<br>Oğuzhan: "Şanslıydın aga!"',next);else endG(0,m+'❌ Tutmadı.<br>Oğuzhan: "Tahminin burnun gibi yamuk çıktı 😂"',next);return}d()};d()}
+function gBet(next){const st=[50,100,200].filter(x=>x<=Math.max(50,gp)),M=[['Beşiktaş - Trabzonspor',1.8,3.2,3.5],['Galatasaray - Fenerbahçe',2.4,3.1,2.6],['Hamsispor - Yamukburun FK',2,3,3.1]];let sk=st[0],pk=[-1,-1,-1];
+ function d(){let h='<h3>🎟️ Kupon yap</h3><p>Bahis (🎮): '+st.map(v=>'<b class="'+(v==sk?'sel':'')+'" onclick="GK(0,'+v+')">'+v+'</b>').join(' ')+'</p>';
+  M.forEach((m,i)=>{h+='<p>'+m[0]+'</p><div>';[0,1,2].forEach(j=>h+='<b class="'+(pk[i]==j?'sel':'')+'" onclick="GK(1,'+i+','+j+')">'+'1X2'[j]+' <small>'+m[j+1]+'</small></b> ');h+='</div>'});G(h+'<button onclick="GK(9)">Kuponu yatır</button>')}
+ GK=(k,a,b)=>{if(k==0)sk=a;else if(k==1)pk[a]=b;else{if(pk.includes(-1))return;const r=pk.map(()=>{const x=Math.random();return x<.4?0:x<.65?1:2}),od=pk.reduce((p,x,i)=>p*M[i][x+1],1),m='Sonuçlar: '+r.map(x=>'1X2'[x]).join(' ')+'<br>';
+  if(r.every((x,i)=>x==pk[i]))endG(Math.round(sk*od)-sk,m+'💰 KUPON TUTTU! x'+od.toFixed(1)+'<br>Oğuzhan: "Bu kupon değil mucize aga!"',next);else endG(-sk,m+'💸 Kupon yattı.<br>Oğuzhan: "Büyük yamuk burun gibi kupon da yattı 😂"',next);return}d()};d()}
+function gJug(next){G('<h3>⚽ Top sektir</h3><p>Topa dokun, düşürme! (15 sn)</p><canvas id=jc width=300 height=360></canvas>');const c=$('#jc'),x=c.getContext('2d');let by=100,bv=0,bx=150,vx=0,n=0,t=15,id;
+ function end(){clearInterval(id);endG(n*10,'⚽ '+n+' sektirme!<br>Oğuzhan: "Topu sektirirsin ama kuponu tutturamazsın!"',next)}
+ c.onpointerdown=e=>{const r=c.getBoundingClientRect(),px=(e.clientX-r.left)*300/r.width,py=(e.clientY-r.top)*360/r.height;if(Math.hypot(px-bx,py-by)<50){bv=-480;vx=(bx-px)*6;n++}};
+ id=setInterval(()=>{const dt=.016;bv+=900*dt;by+=bv*dt;bx+=vx*dt;if(bx<20||bx>280)vx=-vx;t-=dt;
+  x.clearRect(0,0,300,360);x.font='40px sans-serif';x.textAlign='center';x.fillText('⚽',bx,by+14);x.fillStyle='#fff';x.font='bold 18px sans-serif';x.fillText(n+' sektirme • '+Math.max(0,Math.ceil(t))+' sn',150,26);
+  if(by>340||t<=0)end()},16)}
+function gText(S0,next){let k='a',pts=0;function d(){const n=S0[k];if(!n.o){endG(pts,n.t,next);return}G('<h3>📱 Metin Macerası</h3><p style="max-width:340px">'+n.t+'</p>'+n.o.map((o,i)=>'<button onclick="GK('+i+')">'+o[0]+'</button>').join(''))}
+ GK=i=>{const o=S0[k].o[i];k=o[1];pts+=o[2];d()};d()}
+const TS=[
+{a:{t:'🚇 Kontrolör yaklaştı: "Biletiniz?" Müco\'nun cebinde bilet yok, sadece simit var.',o:[['Pluxe kartı göster','b',20],['Simit uzat','c',40],['Uyuyormuş taklidi yap','d',10]]},
+ b:{t:'Kontrolör kartı inceledi: "Bu Monopoly oyunundan." Ne diyeceksin?',o:[['"Özel üyelik, dünyada 3 kişide var!"','e',50],['Sonraki durakta kaç','f',20]]},
+ c:{t:'🥯 Kontrolör simidi ısırdı: "Susamı az ama ceza yazmıyorum." Müco kurtuldu! +40'},
+ d:{t:'😴 Kontrolör omzuna dokundu: "Kardeşim horluyorsun, tüm vagon uyandı." Ceza yedin.'},
+ e:{t:'😂 Kontrolör güldü: "Sen bu işi biliyorsun." Ceza yazmadan geçti!'},
+ f:{t:'🏃 Kaçtın ama kapılar kapandı, kontrolör de içeride kaldı. Birlikte Osmanbey\'e gittiniz.'}},
+{a:{t:'📞 Müdür arıyor: "Müco neredesin?" Aslında yataktasın.',o:[['"Yoldayım, metroda sinyal yok"','b',30],['"Zara\'nın önündeyim müdürüm"','c',20],['Aç, kapat, "ağzım karıştı" de','d',10]]},
+ b:{t:'Müdür: "Ben de aynı metrodayım, sinyal çekiyor!"',o:[['"Müdürüm siz hayalet olmuşsunuz"','e',40],['Telefonu kapat','f',0]]},
+ c:{t:'Müdür: "Kamerada sen yoksun Müco."',o:[['"Kamera bozuk, geçen gün hamsi gördü"','e',50],['Koşmaya başla','f',10]]},
+ d:{t:'📵 Müdür hat kesildi sanıp seni yarına bıraktı. Şanslıydın!'},
+ e:{t:'😂 Müdür: "Bu kadar yalan kimsede yok. Gel, mesai yazmıyorum."'},
+ f:{t:'💼 Müdür seni kovdu... Uyandın, rüyaymış. Hemen işe git!'}},
+{a:{t:'🎟️ Kuponun tuttu sandın ama ekranda "KUPON YATTI" yazıyor.',o:[['Bahis sitesine mesaj at','b',20],['Oğuzhan\'dan "yatırım" diye para iste','c',30],['Kuponu duvara yapıştır, ders olsun','d',40]]},
+ b:{t:'Site: "Bu kupon Trabzonspor lehine bozuldu." Müco\'nun gözü doldu.',o:[['Yamuk burnunu silip devam et','e',30],['Hamsi alıp teselli ol','f',20]]},
+ c:{t:'🐟 Oğuzhan: "Para yok, hamsi var." İkinizin de cebi boş.'},
+ d:{t:'🖼️ Duvarda kupon, altında "Müco 2026". Mehmet fotoğrafını çekti.'},
+ e:{t:'💪 Yamuk burnunla yeni kupona başladın. Moral yüksek!'},
+ f:{t:'🍽️ Hamsiyi yerken kuponu unuttun. En mutlu gün!'}}];
+const GAMES=[gWord,gMatch,gScore,gBet,gJug];
+// ---- bölüm 2: penaltı ----
+function p2(){reset(0x0b3d1e);clock=1000;
+ mesh(Bx(16,.2,16),TX.grass,0,-.1,0);for(let i=0;i<4;i++)mesh(Bx(16,.01,1.5),0x2a9e48,0,.01,-4+i*3);
+ mesh(Bx(.14,2.3,.14),0xffffff,-2.1,1.1,-3);mesh(Bx(.14,2.3,.14),0xffffff,2.1,1.1,-3);mesh(Bx(4.34,.14,.14),0xffffff,0,2.25,-3);
+ const net=new THREE.Mesh(new THREE.PlaneGeometry(4.2,2.2),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.15,side:2}));net.position.set(0,1.1,-3.1);W.add(net);
+ const kp=person(OGZ);kp.position.set(0,0,-2.7);
+ const ks=person(Object.assign({},MUC,{shirt:0x111111,pants:0xffffff}));ks.position.set(-1.8,0,3.8);ks.rotation.y=Math.PI;
+ lbl('BEŞİKTAŞ','#111','#fff',2.2,.9,-3.4,.55,-1.5).rotation.y=.4;
+ const ball=mesh(Sp(.18),0xffffff,0,.18,3.2),b0=new THREE.Vector3(0,.18,3.2);
+ const aim=new THREE.Mesh(new THREE.TorusGeometry(.25,.06,8,20),new THREE.MeshBasicMaterial({color:0xffc400}));aim.position.z=-2.9;W.add(aim);
+ cam(0,1.8,7.5,0,1.1,0);
+ let shots=0,goals=0,st='aim',ax=0,ay=1,fl=0,kx=0,tgt=new THREE.Vector3(),res='';
+ say('Maç özeti: Müco penaltı çekiyor! Sarı halka köşelerdeyken ŞUT\'a bas. Kaleci Oğuzhan!');btns([['⚽ ŞUT',shoot]]);
+ function shoot(){if(st!='aim')return;st='fly';fl=0;shots++;
+  ax+=day>1?(Math.random()-.5)*1.2:0;kx=Math.random()<.5?ax*(.5+day*.1):[-1.3,0,1.3][Math.floor(Math.random()*3)];tgt.set(ax,ay,-2.9);
+  res=Math.abs(ax)>2.05?'post':Math.abs(kx-ax)<.85?'save':'goal'}
+ upd=(dt,t)=>{clock=1000+shots*88;
+  if(st=='aim'){ax=Math.sin(t*(2+day*.6))*2.4;ay=1.15+Math.sin(t*3.3)*.7;aim.position.set(ax,ay,-2.9);aim.visible=true}
+  if(st=='fly'){fl+=dt/.55;const u=Math.min(1,fl);ball.position.lerpVectors(b0,tgt,u);ball.position.y+=Math.sin(u*Math.PI)*.5;
+   kp.position.x+=(kx-kp.position.x)*Math.min(1,dt*9);kp.rotation.z=-(kx-kp.position.x)*.4+kx*-.25;
+   if(u>=1){st='res';aim.visible=false;
+    if(res=='goal'){goals++;score+=150;say('⚽ <b>GOOOL!</b> +150<br>Oğuzhan: "Ofsayt aga, VAR\'a bakalım!"')}
+    else if(res=='save')say('🧤 Kurtardı!<br>Oğuzhan: "Trabzon kalesine gol atılmaz aga."');
+    else say('💥 Direk!<br>Oğuzhan: "Allah\'ın yardımı var aga."');
+    later(()=>{if(shots>=5){clock=1380;say('Saat 23:00. Maç özetleri bitti: <b>'+goals+'/5 gol</b>. Müco kalkıp işe gidiyor.');btns([['🚇 Metroya in',p3]]);st='end'}
+     else{ball.position.copy(b0);kp.position.x=0;kp.rotation.z=0;say('');st='aim'}},1500)}}}
+ tapFn=()=>{if($('#btns').firstChild&&st=='aim')shoot()}}
+// ---- bölüm 3: metro ----
+function p3(){reset(0x10131a);S.fog=new THREE.Fog(0x10131a,8,40);clock=1380;
+ mesh(Bx(7,.2,90),TX.tile,0,-.1,-40);mesh(Bx(.3,5,90),TX.wall,-3.6,2.4,-40);mesh(Bx(.3,5,90),TX.wall,3.6,2.4,-40);mesh(Bx(7.5,.2,90),0x222834,0,5,-40);
+ [-2.6,2.6].forEach(x=>mesh(Bx(.15,.02,90),0xffc400,x,.02,-40));
+ const lights=[];for(let i=0;i<9;i++){const m=new THREE.Mesh(Bx(2,.1,.6),new THREE.MeshBasicMaterial({color:0xffffff}));m.position.set(0,4.9,-i*8);W.add(m);lights.push(m)}
+ const hero=person(Object.assign({},MUC));hero.rotation.y=Math.PI;cam(0,3,5,0,1,-4);
+ let lane=1,prog=0,sp=11+day*1.5,sa=0,objs=[],shake=0,end=false,lastS='';
+ const mv=d=>{lane=Math.max(0,Math.min(2,lane+d))};
+ btns([['◀',()=>mv(-1)],['▶',()=>mv(1)]],'h');
+ tapFn=e=>mv(e.clientX<innerWidth/2?-1:1);
+ const cols=[0x1e88e5,0x43a047,0x8e24aa,0xfb8c00,0xe91e63];
+ upd=(dt,t)=>{if(end)return;prog+=dt/16;clock=1380+prog*45;
+  hero.position.x+=(lane*1.6-1.6-hero.position.x)*Math.min(1,dt*12);walk(hero,t*1.5);hero.position.y=Math.abs(Math.sin(t*10))*.06;
+  lights.forEach(l=>{l.position.z+=sp*dt;if(l.position.z>6)l.position.z-=72});
+  sa-=dt;if(sa<=0){sa=.9-day*.07;const ln=Math.floor(Math.random()*3),isS=Math.random()<.7-day*.06;let m;
+   if(isS){m=new THREE.Mesh(new THREE.TorusGeometry(.28,.11,8,16),mat(0xd9822b));m.position.set(ln*1.6-1.6,.6,-35);W.add(m)}
+   else{m=person({skin:0xd9a577,hair:0x332211,shirt:cols[Math.floor(Math.random()*5)],pants:0x333344});m.position.set(ln*1.6-1.6,0,-35)}
+   objs.push({m,s:isS})}
+  for(let i=objs.length-1;i>=0;i--){const o=objs[i];o.m.position.z+=sp*dt;if(o.s)o.m.rotation.y+=dt*4;else walk(o.m,t*.5);
+   if(o.m.position.z>-.6&&o.m.position.z<.6&&Math.abs(o.m.position.x-hero.position.x)<.8){
+    if(o.s){score+=25;say('🥯 Simit! +25')}else{score-=30;shake=.35;say('💢 "Pardon abi!" -30')}
+    later(()=>{if(!end)say('')},900);W.remove(o.m);objs.splice(i,1)}
+   else if(o.m.position.z>8){W.remove(o.m);objs.splice(i,1)}}
+  shake*=.9;C.position.x=(Math.random()-.5)*shake;
+  const s=prog<.4?'🚇 Mecidiyeköy':prog<.75?'🚇 Şişli':'🚇 Osmanbey\'e az kaldı';if(s!=lastS&&!$('#msg').innerHTML){lastS=s}
+  $('#hud').children[0].textContent=pad(Math.floor(clock/60)%24)+':'+pad(Math.floor(clock%60))+'  '+s;
+  if(prog>=1){end=true;say('🚇 <b>Osmanbey!</b> Müco metrodan indi, Nişantaşı\'na yürüyor. Vardiya başlıyor.');btns([['👕 Mağazaya yürü',pEntry]])}}}
+// ---- sokak: giriş / çıkış ----
+function street(night){const k=night?0x0d1530:0xffb878;reset(k);S.fog=new THREE.Fog(k,10,32);
+ mesh(Bx(18,.2,10),0x4a4d55,0,-.1,1);mesh(Bx(18,.14,3),0x8d8f96,0,.02,-1.6);
+ mesh(Bx(14,6,.4),night?0x3a3a46:0xd8cfc2,0,3,-3.2);mesh(Bx(2.2,3,.1),night?0xffe9a8:0xaed6e8,0,1.5,-2.95);
+ mesh(Bx(5,.8,.2),0x111111,0,3.6,-2.95);lbl('ZARA','#111','#fff',4.6,.7,0,3.6,-2.84);
+ [-4.2,4.2].forEach(x=>mesh(Bx(2.4,2.6,.1),night?0xffd890:0x9cc7de,x,1.5,-2.95));
+ [-6,6].forEach(x=>{mesh(Cy(.06,4),0x222222,x,2,0);mesh(Sp(.25),night?0xfff2b0:0xffffff,x,4.1,0)});
+ night?mesh(Sp(.6),0xeeeeff,-5,6,-6):mesh(Sp(.9),0xfff3a0,5,3.5,-7);upd=()=>{};cam(2,2.6,6.5,0,1.3,-1)}
+function pEntry(){street(1);clock=1430;const h=person(MUC);h.position.set(-6,0,1.5);
+ say('🌙 <b>Nişantaşı, 23:50.</b> Müco Zara\'nın önüne geldi...');btns([]);
+ go(h,0,-1.2,2.2,()=>{say('🚪 Müco kapıdan içeri girdi. Vardiya başlıyor!');h.visible=false;later(p4,1500)})}
+function pExit(cb){street(0);clock=420;const h=person(Object.assign({},MUC,{pants:0x222222}));h.position.set(0,0,-1.3);
+ say('☀️ <b>07:00</b> Vardiya bitti. Müco mağazadan çıkıyor...');btns([]);
+ go(h,3,2.2,2,()=>{say('☀️ Müco sabah güneşinde esnedi: <i>"Yarın yine aynı yalanlar..."</i>');btns([['Devam ⏩',cb]])})}
+// ---- bölüm 4: Zara ----
+const SEC=[['KADIN',0xe53935],['ERKEK',0x1e88e5],['ÇOCUK',0xfdd835]];
+const EV=[
+['Müdür: "Müco, neden geç geldin?"',[['Metro arızalıydı müdürüm.','Tamam, bu seferlik.',40],['Pluxe kartla taksi 100 TL\'ye geldi.','Hangi taksi 100 TL, çık dışarı!',-20]]],
+['Müşteri: "Bu montun 38 bedeni var mı?"',[['Depoya bakıp getiriyorum.','Müşteri çok memnun.',60],['Balık bedeni bilmem.','Müşteri şaşırdı.',-10]]],
+['Kasa alarmı çaldı!',[['Etiketi kontrol edip çıkar.','Yanlış alarmdı, sorun yok.',70],['Alarmı sustur, görmesinler.','Müdür duydu, kızdı.',-30]]],
+['Koli geldi ama etiketler karışmış!',[['Tek tek barkod okut.','Yavaş ama doğru, aferin.',80],['Tahminen raflara diz.','Yanlış rafa gitti!',-25]]],
+['MÜDÜR TEFTİŞİ! Vitrin kontrol ediliyor.',[['Vitrini hızlıca düzelt.','Müdür gülümsedi: bravo.',120],['Beşiktaş atkısı as.','Müdür gözünü kıstı...',-40]]]];
+function p4(){reset(0xe9e6e1);clock=0;
+ mesh(Bx(10,.2,8),TX.marble,0,-.1,0);mesh(Bx(10,5,.2),0xf6f4f0,0,2.5,-3);
+ lbl('ZARA','#fff','#111',3,1,0,3.6,-2.88);
+ for(let i=0;i<9;i++){mesh(Cy(.03,1.6),0x888888,-4+i*.4,.8,-2.5);mesh(Bx(.35,.7,.12),SEC[i%3][1],-4+i*.4,1.3,-2.5)}
+ mesh(Bx(5.2,.8,1.4),0xffffff,0,.4,-.4);
+ const hero=person(Object.assign({},MUC,{pants:0x222222}));hero.position.set(0,0,-1.5);
+ cam(0,3.4,5,0,.9,-.5);
+ let piles=[],spawn=.5,t0=0,fin=false,pause=false,want=0,wt=0,evd=false;
+ const H=$('#o'),setW=()=>{H.textContent='Öncelik: '+SEC[want][0];H.style.color='#'+SEC[want][1].toString(16).padStart(6,'0')};setW();
+ say('00:00 — <b>Gece vardiyası.</b> Müdür WhatsApp\'tan öncelikli bölümü yazıyor. Üstte yazan bölümün renginde yığını katla: +30, diğerleri +5.');btns([]);later(()=>say(''),4500);
+ tapFn=e=>{if(pause)return;const r=new THREE.Raycaster();r.setFromCamera({x:e.clientX/innerWidth*2-1,y:-e.clientY/innerHeight*2+1},C);
+  const h=r.intersectObjects(piles.filter(p=>!p.dead).map(p=>p.m));if(h.length){const p=piles.find(p=>p.m===h[0].object);p.dead=1;score+=p.sec==want?30:day>=4?-5:5}};
+ upd=(dt,t)=>{if(fin||pause)return;t0+=dt;clock=Math.min(420,t0/28*420);
+  wt-=dt;if(wt<=0){want=Math.floor(Math.random()*3);wt=Math.max(3,8-day);setW()}
+  if(!evd&&t0>=13){evd=pause=true;const E=EV[day-1];say('<b>'+E[0]+'</b>');btns(E[1].map(a=>[a[0],()=>{score+=a[2];say(a[1]+' ('+(a[2]>0?'+':'')+a[2]+')');btns([['Vardiyaya dön',()=>{say('');btns([]);pause=false}]])}]));return}
+  spawn-=dt;if(spawn<=0){spawn=Math.max(.35,1-t0/60-day*.06);const free=[0,1,2,3,4].filter(i=>!piles.some(p=>p.i==i)),sc=Math.floor(Math.random()*3);
+   if(free.length){const i=free[Math.floor(Math.random()*free.length)];piles.push({m:mesh(Bx(.9,.5,.8),SEC[sc][1],i-2,.98,-.2),i,sec:sc,age:0})}}
+  for(let k=piles.length-1;k>=0;k--){const p=piles[k];p.age+=dt;
+   if(p.dead){p.m.scale.multiplyScalar(1-dt*10);p.m.position.y+=dt*3;if(p.m.scale.x<.05){W.remove(p.m);piles.splice(k,1)}}
+   else{p.m.scale.y=1+Math.sin(p.age*10)*.1;if(p.age>2.6){score-=10;W.remove(p.m);piles.splice(k,1)}}}
+  hero.rotation.y=Math.sin(t*3)*.15;
+  if(t0>=28){fin=true;clock=420;piles.forEach(p=>W.remove(p.m));pExit(fine)}}
+ function fine(){const my=score-ds,og=Math.round(800+day*160+Math.random()*500),w=my>og;if(w)score+=100;
+  const t='☀️ <b>07:00 — Gün '+day+' bitti!</b><br>Müco: <b>'+my+'</b> • Oğuzhan (dedikodu puanı): <b>'+og+'</b><br>'+(w?'🏆 Oğuzhan\'ı geçtin! +100':'😤 Oğuzhan bu gün önde.');
+  if(day<5){say(t);btns([['➡️ Gün '+(day+1)+'\'e geç',()=>{day++;p1()}]]);return}
+  let hi=0;try{hi=+localStorage.mhi||0;if(score>hi)localStorage.mhi=hi=score}catch(e){}
+  const r=score>=5500?'Beşiktaş\'ın Gururu, Pluxe Kart CEO\'su 🦅':score>=3500?'Kıdemli Yalancı Katlamacı 😎':'Çırak Katlamacı 🧦';
+  say(t+'<br><br>Toplam borç/kayıp: <b>'+debt+' TL</b><br>🤥 Yalan puanı: <b>'+lie+'</b><br>5 gün bitti! Toplam: <b>'+score+'</b> • Rekor: <b>'+hi+'</b><br>Ünvanın: <b>'+r+'</b>');
+  btns([['🔁 Yeni oyun',()=>{score=0;day=1;debt=0;lie=0;gp=0;p1()}]])}}
+// ---- döngü ----
+R.domElement.addEventListener('pointerdown',e=>tapFn&&tapFn(e));
+let last=performance.now(),lt='',ls=-1;
+(function loop(n){requestAnimationFrame(loop);const dt=Math.min(.05,(n-last)/1000);last=n;T+=dt;runTasks(dt);upd(dt,T);
+ const ts=pad(Math.floor(clock/60)%24)+':'+pad(Math.floor(clock%60));
+ if(upd.toString().indexOf('lights')<0){const h=$('#hud').children[0];if(h.textContent!=ts)h.textContent=ts}
+ const hk=score+'|'+lie+'|'+gp;if(hk!=ls){ls=hk;$('#sc').innerHTML='😂 '+score+'<small>🤥 '+lie+' • 🎮 '+gp+'</small>'}
+ R.render(S,C)})(last);
+p1();
+</script></body></html>
